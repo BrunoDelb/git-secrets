@@ -199,6 +199,36 @@ load test_helper
   echo "$output" | grep -F 'Hoagie+man'
 }
 
+@test "Scans using keys from credentials file (Aliyun)" {
+  echo 'access_key_id = abc123' > $BATS_TMPDIR/test.ini
+  echo 'access_key_secret=foobaz' >> $BATS_TMPDIR/test.ini
+  echo 'access_key_id = "Bernard"' >> $BATS_TMPDIR/test.ini
+  echo 'access_key_secret= "Laverne"' >> $BATS_TMPDIR/test.ini
+  echo 'access_key_id= Hoagie+man' >> $BATS_TMPDIR/test.ini
+  cd $TEST_REPO
+  run git secrets --aliyun-provider $BATS_TMPDIR/test.ini
+  [ $status -eq 0 ]
+  echo "$output" | grep -F "foobaz"
+  echo "$output" | grep -F "abc123"
+  echo "$output" | grep -F "Bernard"
+  echo "$output" | grep -F "Laverne"
+  echo "$output" | grep -F 'Hoagie\+man'
+  run git secrets --add-provider -- git secrets --aliyun-provider $BATS_TMPDIR/test.ini
+  [ $status -eq 0 ]
+  echo '(foobaz) test' > $TEST_REPO/bad_file
+  echo "abc123 test" >> $TEST_REPO/bad_file
+  echo 'Bernard test' >> $TEST_REPO/bad_file
+  echo 'Laverne test' >> $TEST_REPO/bad_file
+  echo 'Hoagie+man test' >> $TEST_REPO/bad_file
+  repo_run git-secrets --scan $TEST_REPO/bad_file
+  [ $status -eq 1 ]
+  echo "$output" | grep "foobaz"
+  echo "$output" | grep "abc123"
+  echo "$output" | grep "Bernard"
+  echo "$output" | grep "Laverne"
+  echo "$output" | grep -F 'Hoagie+man'
+}
+
 @test "Lists secrets for a repo" {
   repo_run git-secrets --list
   [ $status -eq 0 ]
@@ -281,6 +311,15 @@ load test_helper
   echo "$output" | grep -F '(A3T[A-Z0-9]|AKIA|AGPA|AIDA|AROA|AIPA|ANPA|ANVA|ASIA)[A-Z0-9]{16}'
   echo "$output" | grep "AKIAIOSFODNN7EXAMPLE"
   echo "$output" | grep "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+}
+
+@test "Adds common Aliyun patterns" {
+  repo_run git config --unset-all secrets
+  repo_run git-secrets --register-aliyun
+  git config --local --get secrets.providers
+  repo_run git-secrets --list
+  echo "$output" | grep "asecretkey"
+  echo "$output" | grep "AlicloudSecret123"
 }
 
 @test "Adds providers" {

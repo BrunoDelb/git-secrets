@@ -60,3 +60,17 @@ load test_helper
   [ "${lines[1]}" == "failure1.txt:1:another line... forbidden" ]
   [ "${lines[2]}" == "failure2.txt:1:me" ]
 }
+
+@test "Rejects commits with prohibited patterns in changeset when Aliyun provider is enabled" {
+  setup_bad_repo
+  repo_run git-secrets --install $TEST_REPO
+  repo_run git-secrets --register-aliyun $TEST_REPO
+  cd $TEST_REPO
+  run git commit -m 'Contents are bad not the message'
+  [ $status -eq 1 ]
+  echo "${lines}" | grep -vq 'git secrets --aliyun-provider: command not found'
+
+  [ "${lines[0]}" == "data.txt:1:@todo more stuff" ]
+  [ "${lines[1]}" == "failure1.txt:1:another line... forbidden" ]
+  [ "${lines[2]}" == "failure2.txt:1:me" ]
+}
